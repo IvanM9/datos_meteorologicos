@@ -1,0 +1,133 @@
+﻿@{
+    ViewData["Title"] = "Datos meteorológicos";
+}
+
+<div class="container">
+    <h1 class="text-center">Datos Meteorológicos</h1>
+    <form id="filterForm" class="form-inline text-center row">
+        <div class="form-group mb-2 col">
+            <label for="modo" class="sr-only">Modo</label>
+            <select id="modo" class="form-control">
+                <option value="month">Month</option>
+                <option value="day">Day</option>
+            </select>
+        </div>
+        <div class="form-group mx-sm-3 mb-2 col">
+            <label for="fecha_desde" class="sr-only">Fecha Desde</label>
+            <input type="date" id="fecha_desde" class="form-control" placeholder="Fecha Desde">
+        </div>
+        <div class="form-group mx-sm-3 mb-2 col">
+            <label for="fecha_hasta" class="sr-only">Fecha Hasta</label>
+            <input type="date" id="fecha_hasta" class="form-control" placeholder="Fecha Hasta">
+        </div>
+        <button type="button" class="btn btn-primary mb-2" onclick="fetchData()">Filtrar</button>
+    </form>
+    <div id="loader" class="text-center mt-2" style="display: none;">
+        <div class="spinner-border" role="status">
+            <span class="sr-only"></span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col col-lg-6 mt-2">
+            <canvas id="radiacionChart"></canvas>
+        </div>
+        <div class="col col-lg-6 mt-2">
+            <canvas id="temperaturaChart"></canvas>
+        </div>
+        <div class="col col-lg-6 mt-2">
+            <canvas id="humedadChart"></canvas>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        async function fetchData() {
+            destroyChart('radiacionChart');
+            destroyChart('temperaturaChart');
+            destroyChart('humedadChart');
+        
+            const modo = document.getElementById('modo').value;
+            const fecha_desde = document.getElementById('fecha_desde').value;
+            const fecha_hasta = document.getElementById('fecha_hasta').value;
+            document.getElementById('loader').style.display = 'block';
+
+            try {
+            let response ;
+            if (modo === 'month') {
+                response = await fetch(`/api/meteo/month/${fecha_desde}/${fecha_hasta}`);
+            } else {
+                response = await fetch(`/api/meteo/day/${fecha_desde}/${fecha_hasta}`);
+            }
+            
+            const data = await response.json();
+            
+            const radiacionData = data.deviceData.filter((d) => d.abreviacionParametro === 'RAD');
+            const temperaturaData = data.deviceData.filter(d => d.abreviacionParametro === 'TEMP');
+            const humedadData = data.deviceData.filter(d => d.abreviacionParametro === 'HUM');
+                
+                updateChart('radiacionChart', 'Radiación', radiacionData);
+                updateChart('temperaturaChart', 'Temperatura', temperaturaData);
+                updateChart('humedadChart', 'Humedad', humedadData);
+
+
+            } catch (error) {
+                console.error(error);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        function updateChart(chartId, label, data) {
+    const ctx = document.getElementById(chartId).getContext('2d');
+    
+    const maxDataArray = data.map(d => d.values.maxData);
+    const max = maxDataArray.reduce((acc, val) => acc + parseFloat(val), 0) / maxDataArray.length;
+
+    const avgDataArray = data.map(d => d.values.avgData);
+    const avg = avgDataArray.reduce((acc, val) => acc + parseFloat(val), 0) / avgDataArray.length;
+    
+    const minDataArray = data.map(d => d.values.minData);
+    const min = minDataArray.reduce((acc, val) => acc + parseFloat(val), 0) / minDataArray.length;
+    
+    console.log(max, avg, min);
+        
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+        labels: ['Max', 'Avg', 'Min'],
+            datasets: [{
+        label: label,
+                data: [max, avg, min],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+        function destroyChart(chartId) {
+            const chart = Chart.getChart(chartId);
+            if (chart) {
+                chart.destroy();
+            }
+        }
+    
+    </script>
+}

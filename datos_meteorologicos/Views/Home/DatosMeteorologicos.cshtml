@@ -1,0 +1,22 @@
+@Model DatosMeteorologicosViewModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+    <title>title</title>
+</head>
+<body>
+<div>
+    @foreach (var dato in Model.DatosSensores)
+    {
+        <p>@dato.CodigoParametro - Nombre: @dato.NombreParametro, Valor: @dato.ValorNumero</p>
+    }
+
+</div>
+</body>
+</html>
